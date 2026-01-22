@@ -1,34 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_basics/components/dialogue_box.dart';
 import 'package:flutter_basics/components/todo_tile.dart';
+import 'package:flutter_basics/data/database.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 class TodoPage extends StatefulWidget {
   const TodoPage({super.key});
-
   @override
   State<TodoPage> createState() => _TodoPageState();
 }
 
 class _TodoPageState extends State<TodoPage> {
   final controller = TextEditingController();
-  // list of todo tasks
-  List todoList = [
-    ["Make a Todo App", false],
-    ["Touch Grass", true],
-  ];
+  final myBox = Hive.box('myBox');
+  TodoDataBase db = TodoDataBase();
 
   void saveNewTask() {
     setState(() {
-      todoList.add([controller.text, false]);
+      db.todoList.add([controller.text, false]);
       controller.clear();
     });
+    db.updateDatabase();
     Navigator.of(context).pop();
   }
 
   void toggleTaskStatus(bool? value, int index) {
     setState(() {
-      todoList[index][1] = !todoList[index][1];
+      db.todoList[index][1] = !db.todoList[index][1];
     });
+    db.updateDatabase();
   }
 
   void createNewTask() {
@@ -44,7 +44,23 @@ class _TodoPageState extends State<TodoPage> {
     );
   }
 
-  void deleteFunction() {}
+  void deleteFunction(int index) {
+    setState(() {
+      db.todoList.removeAt(index);
+    });
+    db.updateDatabase();
+  }
+
+  @override
+  void initState() {
+    // if this is the 1st time ever opening the app
+    if (myBox.get("TODOLIST") == null) {
+      db.createInitialData();
+    } else {
+      db.loadData();
+    }
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,13 +81,13 @@ class _TodoPageState extends State<TodoPage> {
         child: Icon(Icons.add, size: 30),
       ),
       body: ListView.builder(
-        itemCount: todoList.length,
+        itemCount: db.todoList.length,
         itemBuilder: (context, index) {
           return TodoTile(
-            taskName: todoList[index][0],
-            taskCompleted: todoList[index][1],
+            taskName: db.todoList[index][0],
+            taskCompleted: db.todoList[index][1],
             onChanged: (value) => toggleTaskStatus(value, index),
-            deleteFunction: (context) => deleteFunction,
+            deleteFunction: (context) => deleteFunction(index),
           );
         },
       ),
